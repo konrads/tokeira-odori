@@ -6,12 +6,25 @@ members = [
     "crates/odori-providers",
     "crates/odori-engine",
     "crates/odori-mcp-bridge",
+    # `publish = false` — examples and tests: built by `--workspace`, never shipped.
+    "crates/odori-dev-support",
+    "examples",
+    "tests/embedded",
+]
+# The shipped shape: bare `cargo build/clippy/test/doc` compiles these with
+# `preview` off, as a `cargo add odori` user gets them. `--workspace` adds the
+# examples and tests, which turn `preview` on for the whole build.
+default-members = [
+    "crates/odori",
+    "crates/odori-agents",
+    "crates/odori-providers",
+    "crates/odori-engine",
+    "crates/odori-mcp-bridge",
 ]
 exclude = [
-    # The embedded integration harness depends on the engine repo; excluded so
-    # that graph never expands or constrains the product workspace. Run with
-    # `cargo test --manifest-path tests/embedded/Cargo.toml`.
-    "tests/embedded",
+    # `include_str!`'d source, built only as temp copies — never in place.
+    "examples/approval-resume/fixture",
+    "examples/slice-fleet/fixture",
     # Phase-1 protocol probe for the subscription-backed Codex provider. It
     # carries its own lockfile so experimental dependencies and wire probes do
     # not move the product workspace graph.
@@ -19,7 +32,7 @@ exclude = [
 ]
 
 [workspace.package]
-version = "0.1.1"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.97"
 license = "Apache-2.0"
@@ -31,26 +44,28 @@ homepage = "https://tokeira.io"
 # The Temporal Rust SDK is the worker SDK; the embedded tokeira engine speaks
 # the same Temporal contract in-process via
 # `ConnectionOptions::service_override` (an in-memory duplex — no TCP
-# listener, no port). `v0.7.0-fix.1` carries the worker-shutdown permit fix;
-# the patch below keeps Odori and the embedded Tokeira engine on one coherent
-# SDK source so callback-service types cannot split across crate identities.
-temporalio-sdk = "0.7"
-temporalio-sdk-core = "0.7"
-temporalio-client = "0.7"
-temporalio-common = "0.7"
-temporalio-macros = "0.7"
+# listener, no port). Odori and the embedded engine resolve the SDK from the
+# registry on one version line, so callback-service types share one crate
+# identity.
+temporalio-sdk = "1.0"
+temporalio-sdk-core = "0.9"
+temporalio-client = "1.0"
+temporalio-common = "1.0"
+temporalio-macros = "1.0"
 # The macros' expansions reference this crate by name, so any crate using
 # `#[workflow_methods]` needs it as a direct dependency.
-temporalio-workflow = "0.7"
+temporalio-workflow = "1.0"
 # Odori's embedded-engine wrapper forwards the engine's public configuration,
 # startup report, and typed failures. Plain registry dependencies: the engine
 # publishes to crates.io on its own release train.
-tokeira-config = "0.1.1"
-tokeira-engine = "0.1.1"
+tokeira-config = "0.6.1"
+tokeira-engine = "0.6.1"
+tokeira-managed-dsql = "0.6.1"
 
 anyhow = "1.0"
 async-trait = "0.1"
 bytes = "1"
+clap = { version = "4.5", features = ["derive"] }
 http = "1"
 http-body-util = "0.1"
 hyper = { version = "1", features = ["http1", "server"] }
@@ -70,6 +85,8 @@ reqwest = { version = "0.12", default-features = false, features = [
     "stream",
 ] }
 futures = "0.3"
+# Telemetry exporter exercised by the logfire example.
+logfire = "0.12"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
@@ -81,21 +98,14 @@ uuid = { version = "1.10", features = ["serde", "v4"] }
 
 # Internal crates carry an explicit version so intra-workspace requirements
 # stay publishable (and cargo-deny's wildcard ban stays meaningful).
-odori = { path = "crates/odori", version = "0.1.1" }
-odori-agents = { path = "crates/odori-agents", version = "0.1.1" }
-odori-providers = { path = "crates/odori-providers", version = "0.1.1" }
-odori-engine = { path = "crates/odori-engine", version = "0.1.1" }
-odori-mcp-bridge = { path = "crates/odori-mcp-bridge", version = "0.1.1" }
-
-[patch.crates-io]
-temporalio-client = { git = "https://github.com/tokeira/sdk-rust.git", rev = "0602a7d647f2842747b52b17f3533f7c1086795f" }
-temporalio-common = { git = "https://github.com/tokeira/sdk-rust.git", rev = "0602a7d647f2842747b52b17f3533f7c1086795f" }
-temporalio-common-wasm = { git = "https://github.com/tokeira/sdk-rust.git", rev = "0602a7d647f2842747b52b17f3533f7c1086795f" }
-temporalio-macros = { git = "https://github.com/tokeira/sdk-rust.git", rev = "0602a7d647f2842747b52b17f3533f7c1086795f" }
-temporalio-protos = { git = "https://github.com/tokeira/sdk-rust.git", rev = "0602a7d647f2842747b52b17f3533f7c1086795f" }
-temporalio-sdk = { git = "https://github.com/tokeira/sdk-rust.git", rev = "0602a7d647f2842747b52b17f3533f7c1086795f" }
-temporalio-sdk-core = { git = "https://github.com/tokeira/sdk-rust.git", rev = "0602a7d647f2842747b52b17f3533f7c1086795f" }
-temporalio-workflow = { git = "https://github.com/tokeira/sdk-rust.git", rev = "0602a7d647f2842747b52b17f3533f7c1086795f" }
+odori = { path = "crates/odori", version = "0.3.0" }
+odori-agents = { path = "crates/odori-agents", version = "0.3.0" }
+odori-providers = { path = "crates/odori-providers", version = "0.3.0" }
+odori-engine = { path = "crates/odori-engine", version = "0.3.0" }
+odori-mcp-bridge = { path = "crates/odori-mcp-bridge", version = "0.3.0" }
+# Unpublished: dev-only support, and the scenarios the tests assert on.
+odori-dev-support = { path = "crates/odori-dev-support" }
+odori-examples = { path = "examples" }
 
 # Mechanized AGENTS.md rules: prose rules drift under a fluid codebase;
 # compiler-enforced ones survive refactors. Everything here is binding and

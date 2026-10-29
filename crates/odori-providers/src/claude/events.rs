@@ -151,7 +151,8 @@ pub enum UserBlock {
 /// The terminal `{"type":"result", ...}` line.
 #[derive(Debug, Deserialize)]
 pub struct ResultEvent {
-    /// `success` or `error_during_execution`. **Trap:** can read
+    /// `success`, or an `error_*` subtype (`error_during_execution`,
+    /// `error_max_structured_output_retries`, …). **Trap:** can read
     /// `"success"` with `is_error: true` — key on `is_error`.
     pub subtype: String,
     /// The authoritative success flag.
@@ -162,9 +163,25 @@ pub struct ResultEvent {
     /// Final text on success; an error sentence on failure.
     #[serde(default)]
     pub result: Option<String>,
+    /// Under `--json-schema`: the value the model submitted through the
+    /// harness's synthetic `StructuredOutput` tool, already validated
+    /// against the schema. **Trap:** `result` repeats it only when the
+    /// turn's last message carries no text — this field is the value.
+    #[serde(default)]
+    pub structured_output: Option<Value>,
+    /// The harness's failure detail on `error_*` subtypes (an array of
+    /// strings at the pin; absent on API errors). Kept raw so a shape
+    /// change cannot fail the whole terminal line's parse.
+    #[serde(default)]
+    pub errors: Option<Value>,
     /// `"completed"` on success, `"api_error"` on API failure.
     #[serde(default)]
     pub terminal_reason: Option<String>,
+    /// The HTTP status of the API call that failed the turn; `null` when
+    /// none did (2.1.220 and 2.1.286 alike). The only signal for some
+    /// rejections: an unknown model's 404 says so in prose alone.
+    #[serde(default)]
+    pub api_error_status: Option<u16>,
     /// Dollar cost as the CLI reported it.
     #[serde(default)]
     pub total_cost_usd: Option<f64>,
